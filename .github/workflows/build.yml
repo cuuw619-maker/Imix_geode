@@ -1,0 +1,22 @@
+name: Build Geode Mod
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        platform:
+          - win
+          - android
+    steps:
+      - name: Build Geode mod
+        uses: geode-sdk/build-geode-mod@main
+        with:
+          combine: true
+          platform: ${{ matrix.platform }}
