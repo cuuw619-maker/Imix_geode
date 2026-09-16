@@ -1,6 +1,5 @@
 #include <Geode/Geode.hpp>
 #include <Geode/modify/MenuLayer.hpp>
-#include <Geode/modify/PauseLayer.hpp>
 #include <Geode/binding/ButtonSprite.hpp>
 
 #include "ImixMenu.hpp"
@@ -16,9 +15,7 @@ static CCMenuItemSpriteExtra* createImixButton(CCObject* target, SEL_MenuHandler
 class $modify(ImixMenuLayer, MenuLayer) {
 public:
     bool init() {
-        if (!MenuLayer::init()) {
-            return false;
-        }
+        if (!MenuLayer::init()) return false;
 
         auto menu = this->getChildByID("bottom-menu");
         if (menu) {
@@ -35,42 +32,10 @@ public:
             fallback->updateLayout();
             this->addChild(fallback, 100);
         }
-
         return true;
     }
 
     void onImix(CCObject*) {
-        if (auto popup = ImixMenu::create()) {
-            popup->show();
-        }
-    }
-};
-
-class $modify(ImixPauseLayer, PauseLayer) {
-public:
-    bool init(bool unfocused) {
-        if (!PauseLayer::init(unfocused)) {
-            return false;
-        }
-
-        auto menu = this->getChildByID("left-button-menu");
-        if (!menu) {
-            menu = this->getChildByID("right-button-menu");
-        }
-
-        if (menu) {
-            auto button = createImixButton(this, menu_selector(ImixPauseLayer::onImix));
-            button->setID("imix-button"_spr);
-            menu->addChild(button);
-            menu->updateLayout();
-        }
-
-        return true;
-    }
-
-    void onImix(CCObject*) {
-        if (auto popup = ImixMenu::create()) {
-            popup->show();
-        }
+        if (auto popup = ImixMenu::create()) popup->show();
     }
 };
