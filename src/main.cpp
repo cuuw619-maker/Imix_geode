@@ -1,10 +1,17 @@
 #include <Geode/Geode.hpp>
 #include <Geode/modify/MenuLayer.hpp>
 #include <Geode/modify/PauseLayer.hpp>
+#include <Geode/binding/ButtonSprite.hpp>
 
 #include "ImixMenu.hpp"
 
 using namespace geode::prelude;
+
+static CCMenuItemSpriteExtra* createImixButton(CCObject* target, SEL_MenuHandler callback) {
+    auto sprite = ButtonSprite::create("IMIX", "goldFont.fnt", "GJ_button_01.png", 1.f);
+    sprite->setScale(0.72f);
+    return CCMenuItemSpriteExtra::create(sprite, target, callback);
+}
 
 class $modify(ImixMenuLayer, MenuLayer) {
 public:
@@ -14,28 +21,28 @@ public:
         }
 
         auto menu = this->getChildByID("bottom-menu");
-        if (!menu) {
-            return true;
+        if (menu) {
+            auto button = createImixButton(this, menu_selector(ImixMenuLayer::onImix));
+            button->setID("imix-button"_spr);
+            menu->addChild(button);
+            menu->updateLayout();
+        } else {
+            auto fallback = CCMenu::create();
+            fallback->setPosition({this->getContentWidth() - 55.f, 42.f});
+            auto button = createImixButton(this, menu_selector(ImixMenuLayer::onImix));
+            button->setID("imix-button-fallback"_spr);
+            fallback->addChild(button);
+            fallback->updateLayout();
+            this->addChild(fallback, 100);
         }
 
-        auto sprite = CCSprite::createWithSpriteFrameName("GJ_optionsBtn_001.png");
-        if (!sprite) {
-            return true;
-        }
-
-        auto button = CCMenuItemSpriteExtra::create(
-            sprite,
-            this,
-            menu_selector(ImixMenuLayer::onImix)
-        );
-        button->setID("imix-button"_spr);
-        menu->addChild(button);
-        menu->updateLayout();
         return true;
     }
 
     void onImix(CCObject*) {
-        ImixMenu::create()->show();
+        if (auto popup = ImixMenu::create()) {
+            popup->show();
+        }
     }
 };
 
@@ -50,27 +57,20 @@ public:
         if (!menu) {
             menu = this->getChildByID("right-button-menu");
         }
-        if (!menu) {
-            return true;
+
+        if (menu) {
+            auto button = createImixButton(this, menu_selector(ImixPauseLayer::onImix));
+            button->setID("imix-button"_spr);
+            menu->addChild(button);
+            menu->updateLayout();
         }
 
-        auto sprite = CCSprite::createWithSpriteFrameName("GJ_optionsBtn_001.png");
-        if (!sprite) {
-            return true;
-        }
-
-        auto button = CCMenuItemSpriteExtra::create(
-            sprite,
-            this,
-            menu_selector(ImixPauseLayer::onImix)
-        );
-        button->setID("imix-button"_spr);
-        menu->addChild(button);
-        menu->updateLayout();
         return true;
     }
 
     void onImix(CCObject*) {
-        ImixMenu::create()->show();
+        if (auto popup = ImixMenu::create()) {
+            popup->show();
+        }
     }
 };
