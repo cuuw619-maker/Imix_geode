@@ -8,15 +8,20 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
     strategy:
       matrix:
-        platform:
-          - win
-          - android
+        include:
+          - name: android
+            runner: ubuntu-latest
+            target: Android64
+          - name: win
+            runner: windows-latest
+            target: Win64
+    runs-on: ${{ matrix.runner }}
     steps:
       - name: Build Geode mod
         uses: geode-sdk/build-geode-mod@main
         with:
+          sdk: latest
+          target: ${{ matrix.target }}
           combine: true
-          platform: ${{ matrix.platform }}
