@@ -9,7 +9,12 @@ protected:
 
 private:
     void onCategory(cocos2d::CCObject* sender);
+    void onSmartToggle(cocos2d::CCObject* sender);
+    void onSmartAction(cocos2d::CCObject* sender);
     void selectCategory(int category);
+    void animateContentIn();
+    void animateCategoryButtons();
+
     cocos2d::CCLayer* mContent = nullptr;
     cocos2d::CCArray* mCategoryButtons = nullptr;
     int mSelectedCategory = 0;
