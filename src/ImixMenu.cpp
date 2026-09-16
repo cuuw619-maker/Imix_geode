@@ -2,29 +2,34 @@
 
 using namespace geode::prelude;
 
-bool ImixMenu::setup() {
-    auto size = this->getContentSize();
+bool ImixMenu::init() {
+    if (!Popup::init(500.f, 300.f, "GJ_square01.png")) {
+        return false;
+    }
+
     this->setTitle("Imix");
+
+    auto size = m_mainLayer->getContentSize();
 
     auto background = CCLayerColor::create({25, 25, 30, 255});
     background->setContentSize(size);
     background->setPosition(0, 0);
-    this->addChild(background, -1);
+    m_mainLayer->addChildAtPosition(background, Anchor::Center);
 
     constexpr float sidebarWidth = 115.f;
     constexpr float margin = 12.f;
-    constexpr float top = 42.f;
+    constexpr float top = 12.f;
     constexpr float bottom = 12.f;
 
     auto sidebar = CCLayerColor::create({35, 35, 42, 255});
     sidebar->setContentSize({sidebarWidth, size.height - top - bottom});
     sidebar->setPosition({margin, bottom});
-    this->addChild(sidebar);
+    m_mainLayer->addChild(sidebar);
 
     mContent = CCLayer::create();
     mContent->setContentSize({size.width - sidebarWidth - margin * 3, size.height - top - bottom});
     mContent->setPosition({sidebarWidth + margin * 2, bottom});
-    this->addChild(mContent);
+    m_mainLayer->addChild(mContent);
 
     mCategoryButtons = CCArray::create();
     mCategoryButtons->retain();
@@ -43,6 +48,16 @@ bool ImixMenu::setup() {
 
     this->selectCategory(0);
     return true;
+}
+
+ImixMenu* ImixMenu::create() {
+    auto ret = new ImixMenu();
+    if (ret->init()) {
+        ret->autorelease();
+        return ret;
+    }
+    delete ret;
+    return nullptr;
 }
 
 void ImixMenu::onCategory(CCObject* sender) {
