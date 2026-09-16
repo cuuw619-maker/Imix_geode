@@ -41,8 +41,8 @@ public:
 
 class $modify(ImixPauseLayer, PauseLayer) {
 public:
-    bool init(bool fromEditLevel, bool fromPlayLayer) {
-        if (!PauseLayer::init(fromEditLevel, fromPlayLayer)) {
+    bool init(bool unfocused) {
+        if (!PauseLayer::init(unfocused)) {
             return false;
         }
 
