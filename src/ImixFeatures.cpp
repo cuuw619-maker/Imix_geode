@@ -51,19 +51,17 @@ public:
                 overlay->setID("imix-ai-overlay");
                 overlay->setAnchorPoint({0.f, 0.f});
                 auto win = CCDirector::sharedDirector()->getWinSize();
+                const float scale = std::clamp(std::min(win.width / 800.f, win.height / 450.f), .72f, 1.05f);
                 overlay->setPosition({std::max(8.f, win.width * .018f), std::max(8.f, win.height - 118.f)});
-                overlay->setScale(std::clamp(std::min(win.width / 800.f, win.height / 450.f), .72f, 1.05f));
-                overlay->setOpacity(0);
+                overlay->setScale(scale * .82f);
                 scene->addChild(overlay, 100000);
-                overlay->runAction(CCSequence::create(
-                    CCFadeTo::create(.16f, 255),
-                    CCEaseSineOut::create(CCScaleTo::create(.18f, overlay->getScale())),
-                    nullptr
-                ));
+                overlay->runAction(CCEaseBackOut::create(CCScaleTo::create(.20f, scale)));
             } else if (overlay) {
                 auto win = CCDirector::sharedDirector()->getWinSize();
+                const float scale = std::clamp(std::min(win.width / 800.f, win.height / 450.f), .72f, 1.05f);
                 overlay->setPosition({std::max(8.f, win.width * .018f), std::max(8.f, win.height - 118.f)});
-                overlay->setScale(std::clamp(std::min(win.width / 800.f, win.height / 450.f), .72f, 1.05f));
+                if (std::fabs(overlay->getScale() - scale) > .01f)
+                    overlay->setScale(scale);
             }
 
             ImixAI::update(this, dt);
@@ -75,8 +73,9 @@ public:
         if (auto scene = CCDirector::sharedDirector()->getRunningScene()) {
             if (auto overlay = scene->getChildByID("imix-ai-overlay")) {
                 overlay->stopAllActions();
+                const float oldScale = overlay->getScale();
                 overlay->runAction(CCSequence::create(
-                    CCFadeOut::create(.12f),
+                    CCEaseSineIn::create(CCScaleTo::create(.10f, oldScale * .82f)),
                     CCRemoveSelf::create(),
                     nullptr
                 ));
