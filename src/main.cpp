@@ -22,7 +22,19 @@ CCLayer* floatingVisual(){constexpr float S=48.f;auto root=CCLayer::create();roo
 CCMenuItemSpriteExtra* createFloatingButton(CCObject* target,SEL_MenuHandler cb){auto x=CCMenuItemSpriteExtra::create(floatingVisual(),target,cb);x->setContentSize({48,48});x->setAnchorPoint({.5f,.5f});return x;}
 CCMenu* makeFloatingMenu(CCObject* target,SEL_MenuHandler cb,const char* id,CCPoint pos){auto m=CCMenu::create();m->setID(id);m->setPosition(pos);auto b=createFloatingButton(target,cb);b->setPosition({0,0});m->addChild(b);return m;}
 void animateButton(CCNode* n){if(!n)return;n->stopAllActions();n->setScale(.94f);n->runAction(CCEaseSineOut::create(CCScaleTo::create(.16f,1.f)));}
-void openImix(CCNode* button){if(!button)return;animateButton(button);auto popup=ImixMenu::create();if(!popup)return;auto win=CCDirector::sharedDirector()->getWinSize();auto parent=button->getParent();auto origin=parent->convertToWorldSpace(button->getPosition());const float responsive=std::clamp(std::min(win.width/1920.f,win.height/1080.f),.72f,1.f);popup->show();popup->setPosition(origin);popup->setScale(.72f*responsive);auto size=popup->getContentSize();auto drag=ImixDragHandle::create(popup,size.width,62.f);if(drag){drag->setPosition({0.f,size.height-62.f});popup->addChild(drag,1000);}popup->runAction(CCSpawn::create(CCEaseBackOut::create(CCScaleTo::create(.30f,responsive)),CCEaseSineOut::create(CCMoveTo::create(.30f,{win.width*.5f,win.height*.5f})),nullptr));}
+void openImix(CCNode* button){
+    if(!button)return; animateButton(button); auto popup=ImixMenu::create(); if(!popup)return;
+    auto win=CCDirector::sharedDirector()->getWinSize(); auto parent=button->getParent(); auto origin=parent->convertToWorldSpace(button->getPosition());
+    popup->show();
+    const float baseScale=popup->getScale();
+    const float responsive=std::clamp(baseScale*.74f,.62f,.78f);
+    popup->setPosition(origin); popup->setScale(responsive*.72f);
+    auto size=popup->getContentSize(); auto drag=ImixDragHandle::create(popup,size.width,62.f);
+    if(drag){drag->setPosition({0.f,size.height-62.f});popup->addChild(drag,1000);}
+    popup->runAction(CCSpawn::create(
+        CCEaseBackOut::create(CCScaleTo::create(.30f,responsive)),
+        CCEaseSineOut::create(CCMoveTo::create(.30f,{win.width*.5f,win.height*.5f})),nullptr));
+}
 }
 class $modify(ImixMenuLayer,MenuLayer){public:bool init(){if(!MenuLayer::init())return false;auto w=CCDirector::sharedDirector()->getWinSize();auto m=makeFloatingMenu(this,menu_selector(ImixMenuLayer::onImix),"imix-main-menu",{w.width-30.f,30.f});addChild(m,10000);return true;}void onImix(CCObject*){if(auto m=getChildByID("imix-main-menu"))openImix(m);}};
 class $modify(ImixPauseLayer,PauseLayer){public:void customSetup(){PauseLayer::customSetup();auto w=CCDirector::sharedDirector()->getWinSize();auto m=makeFloatingMenu(this,menu_selector(ImixPauseLayer::onImixPause),"imix-pause-menu",{w.width-30.f,30.f});addChild(m,10000);}void onImixPause(CCObject*){if(auto m=getChildByID("imix-pause-menu"))openImix(m);}};
