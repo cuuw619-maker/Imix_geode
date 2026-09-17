@@ -35,9 +35,9 @@ public:
         if (!player) return;
 
         if (ImixAI::enabled()) {
-            if (!this->getChildByID("imix-ai-overlay"_spr)) {
+            if (!this->getChildByID("imix-ai-overlay")) {
                 auto overlay = ImixAI::createOverlay();
-                overlay->setID("imix-ai-overlay"_spr);
+                overlay->setID("imix-ai-overlay");
                 overlay->setPosition({10.f, this->getContentHeight() - 10.f});
                 this->addChild(overlay, 10000);
             }
@@ -89,7 +89,8 @@ public:
             player->setColor({255,255,255});
         }
 
-        const float baseScale = Mod::get()->getSavedValue<int>("player-scale", 100) / 100.f;
+        // Precision scale: 0.01x steps instead of integer-only percentages.
+        const float baseScale = std::clamp(Mod::get()->getSavedValue<float>("player-scale-factor", 1.f), .50f, 1.50f);
         float scale = baseScale;
         if (F("pulse-scale")) scale *= 1.f + 0.10f * std::sin(x * 0.045f + hue * 6.28318f);
         player->setScale(scale);
