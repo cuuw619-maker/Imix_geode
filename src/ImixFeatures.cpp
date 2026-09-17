@@ -1,5 +1,6 @@
 #include <Geode/Geode.hpp>
 #include <Geode/modify/PlayLayer.hpp>
+#include "ImixAI.hpp"
 #include <cmath>
 #include <algorithm>
 
@@ -20,6 +21,10 @@ void setHue(PlayerObject* p, float hue) {
 class $modify(ImixPlayLayer, PlayLayer) {
 public:
     void destroyPlayer(PlayerObject* player, GameObject* obj) {
+        if (ImixAI::enabled()) {
+            ImixAI::onDeath(this);
+            return;
+        }
         if (F("no-death") || F("practice-shield")) return;
         PlayLayer::destroyPlayer(player, obj);
     }
@@ -28,6 +33,16 @@ public:
         PlayLayer::update(dt);
         auto player = this->m_player1;
         if (!player) return;
+
+        if (ImixAI::enabled()) {
+            if (!this->getChildByID("imix-ai-overlay"_spr)) {
+                auto overlay = ImixAI::createOverlay();
+                overlay->setID("imix-ai-overlay"_spr);
+                overlay->setPosition({10.f, this->getContentHeight() - 10.f});
+                this->addChild(overlay, 10000);
+            }
+            ImixAI::update(this, dt);
+        }
 
         if (F("smart-startpos-enabled", true)) {
             if (Mod::get()->getSavedValue<bool>("startpos-request-capture", false)) {
