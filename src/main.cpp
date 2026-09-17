@@ -8,20 +8,15 @@
 using namespace geode::prelude;
 
 namespace {
-class ImixDragHandle : public CCLayer {
+class ImixDragHandle : public CCLayerColor {
     CCPoint mLast{}; bool mDragging=false; ImixMenu* mOwner=nullptr;
 public:
     static ImixDragHandle* create(ImixMenu* owner,float w,float h){auto x=new ImixDragHandle();if(x&&x->initWithColor({0,0,0,0})){x->mOwner=owner;x->setContentSize({w,h});x->autorelease();return x;}delete x;return nullptr;}
-    bool ccTouchBegan(CCTouch* t,CCEvent*) override {
-        auto p=convertToNodeSpace(t->getLocation());
-        if(p.x>getContentWidth()-52.f)return false;
-        mLast=t->getLocation();mDragging=true;return true;
-    }
+    bool ccTouchBegan(CCTouch* t,CCEvent*) override {auto p=convertToNodeSpace(t->getLocation());if(p.x>getContentWidth()-52.f)return false;mLast=t->getLocation();mDragging=true;return true;}
     void ccTouchMoved(CCTouch* t,CCEvent*) override {if(!mDragging||!mOwner)return;auto now=t->getLocation();auto d=now-mLast;auto pos=mOwner->getPosition();mOwner->setPosition(pos+d);mLast=now;}
     void ccTouchEnded(CCTouch*,CCEvent*) override {mDragging=false;}
     void ccTouchCancelled(CCTouch*,CCEvent*) override {mDragging=false;}
     void registerWithTouchDispatcher() override {CCDirector::sharedDirector()->getTouchDispatcher()->addTargetedDelegate(this,INT_MIN+20,true);}
-    bool initWithColor(const ccColor4B& c){if(!CCLayer::init())return false;setTouchEnabled(true);setColor({c.r,c.g,c.b});setOpacity(c.a);return true;}
 };
 CCLayer* floatingVisual(){constexpr float S=48.f;auto root=CCLayer::create();root->setContentSize({S,S});root->setAnchorPoint({.5f,.5f});auto d=CCDrawNode::create();d->setContentSize({S,S});std::vector<CCPoint> p;const float r=14.f,pi=3.14159265359f;const float cx[4]={r,S-r,S-r,r},cy[4]={r,r,S-r,S-r},st[4]={pi,pi*1.5f,0.f,pi*.5f};for(int c=0;c<4;c++)for(int i=0;i<=10;i++){float a=st[c]+pi*.5f*(float(i)/10.f);p.push_back({cx[c]+std::cos(a)*r,cy[c]+std::sin(a)*r});}d->drawPolygon(p.data(),(unsigned)p.size(),{.035f,.055f,.085f,.98f},2.f,{.20f,.48f,.72f,.95f});root->addChild(d);auto label=CCLabelTTF::create("I","sans-serif",18.f);label->setColor({235,245,255});label->setPosition({S*.5f,S*.5f});root->addChild(label,2);return root;}
 CCMenuItemSpriteExtra* createFloatingButton(CCObject* target,SEL_MenuHandler cb){auto x=CCMenuItemSpriteExtra::create(floatingVisual(),target,cb);x->setContentSize({48,48});x->setAnchorPoint({.5f,.5f});return x;}
