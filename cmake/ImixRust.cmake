@@ -12,7 +12,7 @@ function(imix_enable_rust_backend TARGET)
     endif()
 
     set(IMIX_RUST_TARGET "aarch64-linux-android")
-    set(IMIX_RUST_DIR "${CMAKE_CURRENT_LIST_DIR}/../rust")
+    set(IMIX_RUST_DIR "${PROJECT_SOURCE_DIR}/rust")
     set(IMIX_RUST_LIB "${IMIX_RUST_DIR}/target/${IMIX_RUST_TARGET}/release/libimix_rust_core.a")
 
     add_custom_command(
