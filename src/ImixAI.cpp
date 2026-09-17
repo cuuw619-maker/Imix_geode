@@ -25,7 +25,7 @@ namespace {
         PlayLayer* layer=nullptr; CCLayer* overlay=nullptr;
         CCLabelTTF* status=nullptr; CCLabelTTF* metrics=nullptr; CCLabelTTF* plan=nullptr; CCLabelTTF* memory=nullptr;
         CCLayerColor* scan=nullptr;
-        float time=0.f,actionTimer=0.f,scanTimer=0.f,telemetryTimer=0.f,stuckTimer=0.f;
+        float time=0.f,actionTimer=0.f,scanTimer=0.f,telemetryTimer=0.f,stuckTimer=0.f,checkpointTimer=0.f;
         float lastX=0.f,lastY=0.f,checkpointX=0.f,checkpointY=0.f;
         float targetX=-1.f,targetY=0.f,targetGap=0.f,nextActionX=0.f,lastActionX=-100000.f,speed=0.f,jumpLead=28.f;
         int targetID=0,candidate=2,planRevision=0,segmentFailures=0,segmentSuccesses=0;
@@ -39,7 +39,7 @@ namespace {
     float candidateOffset(){static const float a[5]={-6.f,-3.f,0.f,3.f,6.f};return a[std::clamp(s.candidate,0,4)];}
 
     bool isHazard(GameObject* o){
-        if(!o)return false; const int id=o->m_objectID;
+        if(!o)return false;const int id=o->m_objectID;
         switch(id){case 8:case 39:case 88:case 103:case 104:case 105:case 106:case 140:case 141:case 142:case 143:case 144:case 145:return true;default:return false;}
     }
 
@@ -65,11 +65,10 @@ namespace {
     }
 
     void scanLevel(float x,float y){
-        if(!s.layer||!s.layer->m_objects)return;
-        Hazard best;best.x=999999.f;s.hazardCount=0;
+        if(!s.layer||!s.layer->m_objects)return;Hazard best;best.x=999999.f;s.hazardCount=0;
         for(auto object:geode::cocos::CCArrayExt<GameObject,false>(s.layer->m_objects)){
             if(!isHazard(object))continue;auto pos=object->getPosition();float dx=pos.x-x;if(dx<-8.f||dx>190.f)continue;
-            ++s.hazardCount;float score=dx+std::fabs(pos.y-y)*.12f;if(score<best.score||best.x==999999.f){best={pos.x,pos.y,object->m_objectID,score};}
+            ++s.hazardCount;float score=dx+std::fabs(pos.y-y)*.12f;if(score<best.score||best.x==999999.f)best={pos.x,pos.y,object->m_objectID,score};
         }
         if(best.x<999000.f){s.targetX=best.x;s.targetY=best.y;s.targetID=best.id;s.targetGap=best.x-x;s.nextActionX=best.x-s.jumpLead;}
         else{s.targetX=-1.f;s.targetID=0;s.targetGap=-1.f;s.nextActionX=x+std::clamp(72.f-s.speed*4.f,52.f,86.f);}
@@ -85,7 +84,7 @@ namespace {
 
     void queueCheckpoint(float x,float y){
         if(!s.layer||!s.layer->m_isPracticeMode||s.checkpointQueued)return;
-        s.layer->queueCheckpoint();s.checkpointQueued=true;s.checkpointX=x;s.checkpointY=y;
+        s.layer->queueCheckpoint();s.checkpointQueued=true;s.checkpointTimer=.25f;s.checkpointX=x;s.checkpointY=y;
         log::info("[ImixAI][CHECKPOINT] queued built-in practice checkpoint x={:.1f} y={:.1f}",x,y);
     }
 
@@ -128,10 +127,11 @@ void onDeath(PlayLayer* layer){
 void update(PlayLayer* layer,float dt){
     if(!enabled()||!layer||!layer->m_player1)return;auto p=layer->m_player1;
     if(s.layer!=layer){if(s.layer)release(s.layer);s.layer=layer;s.initialized=false;s.deathSeen=false;s.checkpointQueued=false;s.failures=I("ai-failures",0);s.attempts=I("ai-attempts",0);s.segmentFailures=I("ai-segment-failures",0);s.segmentSuccesses=I("ai-segment-successes",0);s.triedMask=I("ai-tried-mask",0);s.errorBudget=budget();log::info("[ImixAI][BOOT] local geometry planner online; practice mode forced; adaptive budget={}",s.errorBudget);}
-    s.time+=dt;s.actionTimer+=dt;s.scanTimer+=dt;s.telemetryTimer+=dt;layer->m_isPracticeMode=true;
+    s.time+=dt;s.actionTimer+=dt;s.scanTimer+=dt;s.telemetryTimer+=dt;s.checkpointTimer=std::max(0.f,s.checkpointTimer-dt);layer->m_isPracticeMode=true;
+    if(s.checkpointQueued&&s.checkpointTimer<=0.f)s.checkpointQueued=false;
 
     if(layer->m_playerDied){release(layer);s.deathSeen=true;s.phase="WAITING PRACTICE RESPAWN";render();return;}
-    if(s.deathSeen){s.deathSeen=false;s.checkpointQueued=false;s.stuckTimer=0.f;s.lastActionX=-100000.f;s.phase="RESCAN AFTER CHECKPOINT";scanLevel(p->getPositionX(),p->getPositionY());}
+    if(s.deathSeen){s.deathSeen=false;s.stuckTimer=0.f;s.lastActionX=-100000.f;s.phase="RESCAN AFTER CHECKPOINT";scanLevel(p->getPositionX(),p->getPositionY());}
 
     float x=p->getPositionX(),y=p->getPositionY(),dx=x-s.lastX;s.speed=dt>.0001f?std::max(0.f,dx/dt):0.f;if(dx>.1f){s.hadProgress=true;s.stuckTimer=0.f;}else s.stuckTimer+=dt;s.lastX=x;s.lastY=y;
     if(!s.initialized){s.initialized=true;s.lastX=x;s.lastY=y;s.checkpointX=x;s.checkpointY=y;s.nextActionX=x+4.f;s.phase="INITIAL SCAN";scanLevel(x,y);searchLog(s.phase,x,y);}
