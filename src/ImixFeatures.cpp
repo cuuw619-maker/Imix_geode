@@ -12,6 +12,19 @@ public:
         if (!player) return;
 
         if (Mod::get()->getSavedValue<bool>("smart-startpos-enabled", true)) {
+            // The current menu's Capture button sets this flag. Save the live position once.
+            if (Mod::get()->getSavedValue<bool>("smart-startpos-captured", false) &&
+                !Mod::get()->getSavedValue<bool>("startpos-valid", false)) {
+                auto pos = player->getPosition();
+                Mod::get()->setSavedValue("startpos-x", pos.x);
+                Mod::get()->setSavedValue("startpos-y", pos.y);
+                Mod::get()->setSavedValue("startpos-valid", true);
+            }
+            // Clear in the current menu removes the saved slot.
+            if (!Mod::get()->getSavedValue<bool>("smart-startpos-captured", false) &&
+                Mod::get()->getSavedValue<bool>("startpos-valid", false)) {
+                Mod::get()->setSavedValue("startpos-valid", false);
+            }
             if (Mod::get()->getSavedValue<bool>("startpos-request-capture", false)) {
                 auto pos = player->getPosition();
                 Mod::get()->setSavedValue("startpos-x", pos.x);
