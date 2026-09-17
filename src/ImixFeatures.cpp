@@ -7,17 +7,28 @@ using namespace geode::prelude;
 
 namespace {
 bool F(const char* k, bool d = false) { return Mod::get()->getSavedValue<bool>(k, d); }
+float clamp01(float v) { return std::max(0.f, std::min(1.f, v)); }
+void setHue(PlayerObject* p, float hue) {
+    hue -= std::floor(hue);
+    float r = std::fabs(hue * 6.f - 3.f) - 1.f;
+    float g = 2.f - std::fabs(hue * 6.f - 2.f);
+    float b = 2.f - std::fabs(hue * 6.f - 4.f);
+    p->setColor({static_cast<GLubyte>(clamp01(r) * 255.f), static_cast<GLubyte>(clamp01(g) * 255.f), static_cast<GLubyte>(clamp01(b) * 255.f)});
+}
 }
 
 class $modify(ImixPlayLayer, PlayLayer) {
 public:
+    void destroyPlayer(PlayerObject* player, GameObject* obj) {
+        if (F("no-death") || F("practice-shield")) return;
+        PlayLayer::destroyPlayer(player, obj);
+    }
+
     void update(float dt) {
         PlayLayer::update(dt);
         auto player = this->m_player1;
         if (!player) return;
 
-        // Smart StartPos is consumed from the live gameplay thread, so pressing
-        // Capture/Restore from the pause popup affects the actual player.
         if (F("smart-startpos-enabled", true)) {
             if (Mod::get()->getSavedValue<bool>("startpos-request-capture", false)) {
                 auto pos = player->getPosition();
@@ -36,40 +47,39 @@ public:
             }
         }
 
+        static float hue = 0.f;
+        static float lastX = 0.f;
+        const float x = player->getPositionX();
+        const float dx = x - lastX;
+        lastX = x;
+
         const bool hidden = F("hide-player");
         const bool ghost = F("ghost-player");
-        const bool rainbow = F("rainbow-player");
-        player->setOpacity(hidden ? 0 : ghost ? 125 : 255);
+        int opacity = hidden ? 0 : ghost ? 125 : 255;
+        if (F("xray-fade") && !hidden) {
+            opacity = static_cast<int>(125.f + 100.f * (0.5f + 0.5f * std::sin(x * 0.035f)));
+        }
+        player->setOpacity(static_cast<GLubyte>(std::max(0, std::min(255, opacity))));
 
-        if (F("mirror-player")) player->setFlipX(true);
-        else player->setFlipX(false);
+        if (F("auto-mirror") && std::fabs(dx) > 0.001f) player->setFlipX(dx < 0.f);
+        else player->setFlipX(F("mirror-player"));
 
-        if (rainbow) {
-            static float hue = 0.f;
+        if (F("rainbow-player")) {
             hue += dt * 0.35f;
-            while (hue > 1.f) hue -= 1.f;
-            float r = std::fabs(hue * 6.f - 3.f) - 1.f;
-            float g = 2.f - std::fabs(hue * 6.f - 2.f);
-            float b = 2.f - std::fabs(hue * 6.f - 4.f);
-            r = std::max(0.f, std::min(1.f, r));
-            g = std::max(0.f, std::min(1.f, g));
-            b = std::max(0.f, std::min(1.f, b));
-            player->setColor({
-                static_cast<GLubyte>(r * 255.f),
-                static_cast<GLubyte>(g * 255.f),
-                static_cast<GLubyte>(b * 255.f)
-            });
+            setHue(player, hue);
+        } else if (F("color-reactor")) {
+            setHue(player, x * 0.003f + hue * 0.25f);
+            hue += dt * 0.12f;
         } else {
-            player->setColor({255, 255, 255});
+            player->setColor({255,255,255});
         }
 
-        const int scale = Mod::get()->getSavedValue<int>("player-scale", 100);
-        player->setScale(scale / 100.f);
+        const float baseScale = Mod::get()->getSavedValue<int>("player-scale", 100) / 100.f;
+        float scale = baseScale;
+        if (F("pulse-scale")) scale *= 1.f + 0.10f * std::sin(x * 0.045f + hue * 6.28318f);
+        player->setScale(scale);
 
-        if (F("spin-player")) {
-            player->setRotation(player->getRotation() + dt * 240.f);
-        } else if (F("freeze-rotation")) {
-            player->setRotation(0.f);
-        }
+        if (F("spin-player")) player->setRotation(player->getRotation() + dt * 240.f);
+        else if (F("freeze-rotation")) player->setRotation(0.f);
     }
 };
