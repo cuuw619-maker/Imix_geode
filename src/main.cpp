@@ -27,7 +27,7 @@ public:
     bool ccTouchBegan(CCTouch* touch, CCEvent*) override {
         if (!mOwner) return false;
         auto p = convertToNodeSpace(touch->getLocation());
-        if (p.x > getContentWidth() - 55.f) return false;
+        if (p.x > getContentWidth() - 52.f) return false;
         mLast = touch->getLocation();
         mDragging = true;
         return true;
@@ -36,12 +36,12 @@ public:
         if (!mDragging || !mOwner) return;
         auto now = touch->getLocation();
         auto delta = now - mLast;
-        auto pos = mOwner->getPosition();
         auto win = CCDirector::sharedDirector()->getWinSize();
         auto size = mOwner->getContentSize() * mOwner->getScale();
-        const float margin = 8.f;
-        pos.x = std::clamp(pos.x + delta.x, size.width * .5f + margin, win.width - size.width * .5f - margin);
-        pos.y = std::clamp(pos.y + delta.y, size.height * .5f + margin, win.height - size.height * .5f - margin);
+        const float margin = 10.f;
+        auto pos = mOwner->getPosition();
+        pos.x = std::clamp(pos.x + delta.x, size.width + margin, win.width - margin);
+        pos.y = std::clamp(pos.y + delta.y, size.height + margin, win.height - margin);
         mOwner->setPosition(pos);
         mLast = now;
     }
@@ -102,27 +102,38 @@ void animateButton(CCNode* n) {
 void openImix(CCNode* button) {
     if (!button) return;
     animateButton(button);
-    auto popup=ImixMenu::create();
+
+    auto popup = ImixMenu::create();
     if (!popup) return;
 
-    auto win=CCDirector::sharedDirector()->getWinSize();
-    auto size=popup->getContentSize();
-    auto safeW=std::max(240.f, win.width-24.f);
-    auto safeH=std::max(220.f, win.height-24.f);
-    auto scale=std::min(safeW/size.width, safeH/size.height);
-    scale=std::clamp(scale,.58f,1.0f);
+    auto win = CCDirector::sharedDirector()->getWinSize();
+    const float margin = std::max(12.f, std::min(win.width, win.height) * .025f);
+    const auto base = popup->getContentSize();
 
-    popup->setAnchorPoint({.5f,.5f});
-    popup->setScale(scale*.88f);
-    popup->setPosition({win.width*.5f,win.height*.5f});
+    // Treat the popup as a real top-right anchored GD-style panel.
+    // The right/top edges are therefore controlled by one screen-space point.
+    popup->setAnchorPoint({1.f, 1.f});
 
-    auto drag=ImixDragHandle::create(popup,size.width,64.f);
+    // Never compress the menu more than necessary. Keep text readable.
+    const float availableW = std::max(260.f, win.width - margin * 2.f);
+    const float availableH = std::max(220.f, win.height - margin * 2.f);
+    float scale = std::min(availableW / base.width, availableH / base.height);
+    scale = std::clamp(scale, .58f, 1.f);
+    popup->setScale(scale);
+
+    // Anchor point (1,1) means this coordinate is the panel's top-right corner.
+    popup->setPosition({win.width - margin, win.height - margin});
+
+    auto drag = ImixDragHandle::create(popup, base.width, 64.f);
     if (drag) {
-        drag->setPosition({0.f,size.height-64.f});
-        popup->addChild(drag,1000);
+        drag->setPosition({0.f, base.height - 64.f});
+        popup->addChild(drag, 1000);
     }
 
-    popup->runAction(CCEaseBackOut::create(CCScaleTo::create(.28f,scale)));
+    // Subtle GD-like popup entrance without moving the final position.
+    popup->stopAllActions();
+    popup->setScale(scale * .96f);
+    popup->runAction(CCEaseBackOut::create(CCScaleTo::create(.20f, scale)));
 }
 }
 
