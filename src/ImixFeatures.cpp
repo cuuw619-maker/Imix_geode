@@ -21,8 +21,11 @@ void setHue(PlayerObject* p, float hue) {
 class $modify(ImixPlayLayer, PlayLayer) {
 public:
     void destroyPlayer(PlayerObject* player, GameObject* obj) {
+        // AI must never replace the real death path with noclip/no-death.
+        // Practice mode owns death, checkpoint creation and the normal respawn.
         if (ImixAI::enabled()) {
             ImixAI::onDeath(this);
+            PlayLayer::destroyPlayer(player, obj);
             return;
         }
         if (F("no-death") || F("practice-shield")) return;
@@ -35,29 +38,49 @@ public:
         if (!player) return;
 
         if (ImixAI::enabled()) {
-            auto overlay = this->getChildByID("imix-ai-overlay");
-            if (!overlay) {
+            // Force the actual Geometry Dash practice state. We deliberately do
+            // not touch collision/damage flags; the player must really die.
+            this->m_isPracticeMode = true;
+            Mod::get()->setSavedValue("no-death", false);
+            Mod::get()->setSavedValue("practice-shield", false);
+
+            auto scene = CCDirector::sharedDirector()->getRunningScene();
+            auto overlay = scene ? scene->getChildByID("imix-ai-overlay") : nullptr;
+            if (!overlay && scene) {
                 overlay = ImixAI::createOverlay();
                 overlay->setID("imix-ai-overlay");
                 overlay->setAnchorPoint({0.f, 0.f});
-                overlay->setPosition({12.f, this->getContentHeight() - 124.f});
-                overlay->setScale(.82f);
-                // createOverlay() returns the CCLayer interface but the concrete root
-                // is a CCLayerColor so the HUD can use the RGBA fade safely.
-                if (auto rgba = typeinfo_cast<CCLayerColor*>(overlay)) rgba->setOpacity(0);
-                this->addChild(overlay, 10000);
+                auto win = CCDirector::sharedDirector()->getWinSize();
+                overlay->setPosition({std::max(8.f, win.width * .018f), std::max(8.f, win.height - 118.f)});
+                overlay->setScale(std::clamp(std::min(win.width / 800.f, win.height / 450.f), .72f, 1.05f));
+                overlay->setOpacity(0);
+                scene->addChild(overlay, 100000);
                 overlay->runAction(CCSequence::create(
-                    CCFadeTo::create(.18f, 255),
-                    CCEaseSineOut::create(CCScaleTo::create(.16f, .88f)),
+                    CCFadeTo::create(.16f, 255),
+                    CCEaseSineOut::create(CCScaleTo::create(.18f, overlay->getScale())),
                     nullptr
                 ));
-            } else {
-                overlay->setPosition({12.f, this->getContentHeight() - 124.f});
+            } else if (overlay) {
+                auto win = CCDirector::sharedDirector()->getWinSize();
+                overlay->setPosition({std::max(8.f, win.width * .018f), std::max(8.f, win.height - 118.f)});
+                overlay->setScale(std::clamp(std::min(win.width / 800.f, win.height / 450.f), .72f, 1.05f));
             }
+
             ImixAI::update(this, dt);
-        } else if (auto overlay = this->getChildByID("imix-ai-overlay")) {
-            overlay->stopAllActions();
-            overlay->runAction(CCFadeOut::create(.12f));
+            // AI owns the player while active. Other experimental player visual
+            // hooks are intentionally suspended so they cannot interfere with input.
+            return;
+        }
+
+        if (auto scene = CCDirector::sharedDirector()->getRunningScene()) {
+            if (auto overlay = scene->getChildByID("imix-ai-overlay")) {
+                overlay->stopAllActions();
+                overlay->runAction(CCSequence::create(
+                    CCFadeOut::create(.12f),
+                    CCRemoveSelf::create(),
+                    nullptr
+                ));
+            }
         }
 
         if (F("smart-startpos-enabled", true)) {
@@ -87,23 +110,15 @@ public:
         const bool hidden = F("hide-player");
         const bool ghost = F("ghost-player");
         int opacity = hidden ? 0 : ghost ? 125 : 255;
-        if (F("xray-fade") && !hidden) {
-            opacity = static_cast<int>(125.f + 100.f * (0.5f + 0.5f * std::sin(x * 0.035f)));
-        }
+        if (F("xray-fade") && !hidden) opacity = static_cast<int>(125.f + 100.f * (0.5f + 0.5f * std::sin(x * 0.035f)));
         player->setOpacity(static_cast<GLubyte>(std::max(0, std::min(255, opacity))));
 
         if (F("auto-mirror") && std::fabs(dx) > 0.001f) player->setFlipX(dx < 0.f);
         else player->setFlipX(F("mirror-player"));
 
-        if (F("rainbow-player")) {
-            hue += dt * 0.35f;
-            setHue(player, hue);
-        } else if (F("color-reactor")) {
-            setHue(player, x * 0.003f + hue * 0.25f);
-            hue += dt * 0.12f;
-        } else {
-            player->setColor({255,255,255});
-        }
+        if (F("rainbow-player")) { hue += dt * 0.35f; setHue(player, hue); }
+        else if (F("color-reactor")) { setHue(player, x * 0.003f + hue * 0.25f); hue += dt * 0.12f; }
+        else player->setColor({255,255,255});
 
         const float baseScale = std::clamp(Mod::get()->getSavedValue<float>("player-scale-factor", 1.f), .50f, 1.50f);
         float scale = baseScale;
