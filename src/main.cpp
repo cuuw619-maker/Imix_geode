@@ -1,6 +1,8 @@
 #include <Geode/Geode.hpp>
 #include <Geode/modify/MenuLayer.hpp>
 #include <Geode/modify/PauseLayer.hpp>
+#include <cmath>
+#include <vector>
 #include "ImixMenu.hpp"
 
 using namespace geode::prelude;
@@ -30,8 +32,7 @@ CCLayer* roundedButton(float w, float h, const char* text) {
     return layer;
 }
 CCMenuItemSpriteExtra* createImixButton(CCObject* target, SEL_MenuHandler callback) {
-    auto sprite = roundedButton(70.f, 30.f, "IMIX");
-    return CCMenuItemSpriteExtra::create(sprite, target, callback);
+    return CCMenuItemSpriteExtra::create(roundedButton(70.f,30.f,"IMIX"), target, callback);
 }
 }
 
