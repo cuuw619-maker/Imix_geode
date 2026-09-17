@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.21)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if ("${CMAKE_SYSTEM_NAME}" STREQUAL "iOS" OR IOS)
-    set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64")
+    set(CMAKE_OSX_ARCHITECTURES "arm64")
 else()
     set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64")
 endif()
@@ -10,10 +10,7 @@ set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 
 project(Template VERSION 1.0.0)
 
-# Add all source files inside src (recursively)
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
-
-# Set up the mod binary
 add_library(${PROJECT_NAME} SHARED ${SOURCES})
 
 if (NOT DEFINED ENV{GEODE_SDK})
@@ -24,9 +21,8 @@ endif()
 
 add_subdirectory($ENV{GEODE_SDK} ${CMAKE_CURRENT_BINARY_DIR}/geode)
 
-# Rust is a native backend, not a JVM/plugin runtime. On Android64 it is
-# compiled as a static library and exposed through a small C ABI. Windows and
-# other targets keep the deterministic C++ fallback so the mod stays portable.
+# Android64: compile the Rust core as a native static library and expose it
+# through src/ImixRuntimeAPI.cpp. Other targets use the deterministic C++ fallback.
 if (ANDROID AND CMAKE_ANDROID_ARCH_ABI STREQUAL "arm64-v8a")
     find_program(IMIX_CARGO cargo)
     if (NOT IMIX_CARGO)
@@ -44,9 +40,7 @@ if (ANDROID AND CMAKE_ANDROID_ARCH_ABI STREQUAL "arm64-v8a")
             "RUSTFLAGS=-C panic=abort"
             ${IMIX_CARGO} build --manifest-path "${IMIX_RUST_DIR}/Cargo.toml" --release --target "${IMIX_RUST_TARGET}"
         WORKING_DIRECTORY "${IMIX_RUST_DIR}"
-        DEPENDS
-            "${IMIX_RUST_DIR}/Cargo.toml"
-            "${IMIX_RUST_DIR}/src/lib.rs"
+        DEPENDS "${IMIX_RUST_DIR}/Cargo.toml" "${IMIX_RUST_DIR}/src/lib.rs"
         COMMENT "Building Imix Rust native core (Android64)"
         VERBATIM
     )
@@ -56,5 +50,4 @@ if (ANDROID AND CMAKE_ANDROID_ARCH_ABI STREQUAL "arm64-v8a")
     target_link_libraries(${PROJECT_NAME} PRIVATE "${IMIX_RUST_LIB}")
 endif()
 
-# Set up dependencies, resources, and link Geode.
 setup_geode_mod(${PROJECT_NAME})
