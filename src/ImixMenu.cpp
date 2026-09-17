@@ -28,7 +28,6 @@ static CCMenuItemLabel* makeTextButton(const char* label, CCObject* target, SEL_
 bool ImixMenu::init() {
     if (!Popup::init(500.f, 315.f, "GJ_square01.png")) return false;
 
-    // Fit the logical UI to the actual viewport instead of using one huge fixed size.
     auto win = CCDirector::sharedDirector()->getWinSize();
     auto popupSize = m_mainLayer->getContentSize();
     auto fitX = (win.width * 0.86f) / popupSize.width;
@@ -133,11 +132,9 @@ void ImixMenu::animateCategoryButtons() {
 void ImixMenu::animateContentIn() {
     if (!mContent) return;
     mContent->stopAllActions();
-    mContent->setOpacity(0);
     mContent->setPositionX(mContent->getPositionX() + 8.f);
     auto move = CCEaseSineOut::create(CCMoveBy::create(0.16f, {-8.f, 0.f}));
-    auto fade = CCFadeIn::create(0.13f);
-    mContent->runAction(CCSpawn::create(move, fade, nullptr));
+    mContent->runAction(move);
 }
 
 void ImixMenu::selectCategory(int category) {
@@ -219,39 +216,36 @@ void ImixMenu::selectCategory(int category) {
         capture->setPositionY(13.f);
         actionMenu->addChild(capture);
 
-        auto clear = makeTextButton("Clear", this, menu_selector(ImixMenu::onSmartAction), 2);
+        auto clear = makeTextButton("Clear", this, menu_selector(ImixMenu::onSmartAction), 0);
         clear->setScale(0.68f);
         clear->setPositionY(-13.f);
         actionMenu->addChild(clear);
-
-        auto ready = Mod::get()->getSavedValue<bool>("smart-startpos-slot-ready", false);
-        auto hint = text(ready ? "Slot ready" : "No slot captured", 8.f, ready ? SUCCESS : MUTED);
-        hint->setAnchorPoint({0.f, 0.f});
-        hint->setPosition({22.f, 13.f});
-        mContent->addChild(hint);
+    } else if (category == 1) {
+        auto card = CCLayerColor::create({PANEL.r, PANEL.g, PANEL.b, 255});
+        card->setContentSize({contentW - 44.f, 82.f});
+        card->setPosition({22.f, contentH - 137.f});
+        mContent->addChild(card);
+        auto label = text("Player controls", 14.f, TEXT);
+        label->setAnchorPoint({0.f, 1.f});
+        label->setPosition({15.f, 65.f});
+        card->addChild(label);
+        auto description = text("Player settings will appear here.", 9.f, MUTED);
+        description->setAnchorPoint({0.f, 1.f});
+        description->setPosition({15.f, 43.f});
+        card->addChild(description);
     } else {
         auto card = CCLayerColor::create({PANEL.r, PANEL.g, PANEL.b, 255});
-        card->setContentSize({contentW - 44.f, 96.f});
-        card->setPosition({22.f, contentH - 151.f});
+        card->setContentSize({contentW - 44.f, 82.f});
+        card->setPosition({22.f, contentH - 137.f});
         mContent->addChild(card);
-
-        auto label = text(category == 1 ? "Player settings" : "Visual settings", 14.f, TEXT);
+        auto label = text("Visual controls", 14.f, TEXT);
         label->setAnchorPoint({0.f, 1.f});
-        label->setPosition({15.f, 72.f});
+        label->setPosition({15.f, 65.f});
         card->addChild(label);
-
-        auto status = text(
-            category == 1 ? "Player controls will be added here" : "Custom Imix visual system is active",
-            9.f, MUTED
-        );
-        status->setAnchorPoint({0.f, 1.f});
-        status->setPosition({15.f, 49.f});
-        card->addChild(status);
-
-        auto state = text("READY", 9.f, ACCENT);
-        state->setAnchorPoint({1.f, 0.5f});
-        state->setPosition({card->getContentWidth() - 15.f, 22.f});
-        card->addChild(state);
+        auto description = text("Visual settings will appear here.", 9.f, MUTED);
+        description->setAnchorPoint({0.f, 1.f});
+        description->setPosition({15.f, 43.f});
+        card->addChild(description);
     }
 
     animateCategoryButtons();
@@ -259,14 +253,16 @@ void ImixMenu::selectCategory(int category) {
 }
 
 void ImixMenu::onSmartToggle(CCObject*) {
-    auto enabled = Mod::get()->getSavedValue<bool>("smart-startpos-enabled", true);
-    Mod::get()->setSavedValue("smart-startpos-enabled", !enabled);
+    auto current = Mod::get()->getSavedValue<bool>("smart-startpos-enabled", true);
+    Mod::get()->setSavedValue("smart-startpos-enabled", !current);
     selectCategory(0);
 }
 
 void ImixMenu::onSmartAction(CCObject* sender) {
     auto tag = static_cast<CCNode*>(sender)->getTag();
-    if (tag == 1) Mod::get()->setSavedValue("smart-startpos-slot-ready", true);
-    if (tag == 2) Mod::get()->setSavedValue("smart-startpos-slot-ready", false);
-    selectCategory(0);
+    if (tag == 1) {
+        Mod::get()->setSavedValue("smart-startpos-captured", true);
+    } else {
+        Mod::get()->setSavedValue("smart-startpos-captured", false);
+    }
 }
