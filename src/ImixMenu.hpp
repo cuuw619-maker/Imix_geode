@@ -11,6 +11,9 @@ private:
     void onCategory(cocos2d::CCObject* sender);
     void onSmartToggle(cocos2d::CCObject* sender);
     void onSmartAction(cocos2d::CCObject* sender);
+    void onVisualToggle(cocos2d::CCObject* sender);
+    void onPlayerScale(cocos2d::CCObject* sender);
+    void onResetFeatures(cocos2d::CCObject* sender);
     void selectCategory(int category);
     void animateContentIn();
     void animateCategoryButtons();
