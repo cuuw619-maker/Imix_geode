@@ -5,6 +5,7 @@
 #include <vector>
 #include <algorithm>
 #include "ImixMenu.hpp"
+#include "ImixRuntimeAPI.hpp"
 using namespace geode::prelude;
 
 namespace {
@@ -38,8 +39,9 @@ public:
         auto delta = now - mLast;
         auto win = CCDirector::sharedDirector()->getWinSize();
         auto size = mOwner->getContentSize() * mOwner->getScale();
-        const float margin = 10.f;
+        const float margin = std::max(8.f, std::min(win.width, win.height) * .018f);
         auto pos = mOwner->getPosition();
+        // ImixMenu is top-right anchored: position is the panel's top-right point.
         pos.x = std::clamp(pos.x + delta.x, size.width + margin, win.width - margin);
         pos.y = std::clamp(pos.y + delta.y, size.height + margin, win.height - margin);
         mOwner->setPosition(pos);
@@ -99,6 +101,26 @@ void animateButton(CCNode* n) {
     n->runAction(CCEaseSineOut::create(CCScaleTo::create(.16f,1.f)));
 }
 
+void addRuntimeBadge(ImixMenu* popup) {
+    if (!popup || popup->getChildByID("imix-runtime-badge")) return;
+    auto badge = CCLayerColor::create({20, 28, 39, 235}, 118.f, 22.f);
+    badge->setID("imix-runtime-badge");
+    badge->setAnchorPoint({0.f, 1.f});
+    auto label = CCLabelTTF::create(
+        ImixRuntime::version() ? "RUST CORE  •  LOCAL" : "C++ CORE  •  LOCAL",
+        "sans-serif", 7.5f
+    );
+    label->setColor({205,225,242});
+    label->setAnchorPoint({0.f, .5f});
+    label->setPosition({8.f, 11.f});
+    badge->addChild(label);
+    auto win = CCDirector::sharedDirector()->getWinSize();
+    const auto base = popup->getContentSize();
+    const float scale = popup->getScale();
+    badge->setPosition({12.f / scale, (base.height - 12.f) / scale});
+    popup->addChild(badge, 2000);
+}
+
 void openImix(CCNode* button) {
     if (!button) return;
     animateButton(button);
@@ -110,18 +132,15 @@ void openImix(CCNode* button) {
     const float margin = std::max(12.f, std::min(win.width, win.height) * .025f);
     const auto base = popup->getContentSize();
 
-    // Treat the popup as a real top-right anchored GD-style panel.
-    // The right/top edges are therefore controlled by one screen-space point.
+    // Top-right GD-style placement. The anchor is explicit so the panel can
+    // never drift past the right/top edge when its scale changes.
     popup->setAnchorPoint({1.f, 1.f});
 
-    // Never compress the menu more than necessary. Keep text readable.
     const float availableW = std::max(260.f, win.width - margin * 2.f);
     const float availableH = std::max(220.f, win.height - margin * 2.f);
     float scale = std::min(availableW / base.width, availableH / base.height);
     scale = std::clamp(scale, .58f, 1.f);
     popup->setScale(scale);
-
-    // Anchor point (1,1) means this coordinate is the panel's top-right corner.
     popup->setPosition({win.width - margin, win.height - margin});
 
     auto drag = ImixDragHandle::create(popup, base.width, 64.f);
@@ -130,7 +149,8 @@ void openImix(CCNode* button) {
         popup->addChild(drag, 1000);
     }
 
-    // Subtle GD-like popup entrance without moving the final position.
+    addRuntimeBadge(popup);
+
     popup->stopAllActions();
     popup->setScale(scale * .96f);
     popup->runAction(CCEaseBackOut::create(CCScaleTo::create(.20f, scale)));
