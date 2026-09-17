@@ -21,10 +21,14 @@ public:
 
 private:
     void selectCategory(int category);
-    void animateContentIn();
+    void renderCategory();
+    void renderItem(const struct ImixMenuModelItemProxy& item, float y);
+    void animateContentIn(int direction);
     void animateCategoryButtons();
 
     cocos2d::CCLayer* mContent = nullptr;
     cocos2d::CCArray* mCategoryButtons = nullptr;
     int mSelectedCategory = 0;
+    int mPreviousCategory = 0;
+    bool mAnimating = false;
 };
