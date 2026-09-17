@@ -39,13 +39,12 @@ public:
             if (!overlay) {
                 overlay = ImixAI::createOverlay();
                 overlay->setID("imix-ai-overlay");
-                // Use an explicit bottom-left anchor and place the dashboard inside
-                // the PlayLayer bounds. This prevents the visual panel from drifting
-                // relative to the actual layer coordinate system.
                 overlay->setAnchorPoint({0.f, 0.f});
                 overlay->setPosition({12.f, this->getContentHeight() - 124.f});
                 overlay->setScale(.82f);
-                overlay->setOpacity(0);
+                // createOverlay() returns the CCLayer interface but the concrete root
+                // is a CCLayerColor so the HUD can use the RGBA fade safely.
+                if (auto rgba = typeinfo_cast<CCLayerColor*>(overlay)) rgba->setOpacity(0);
                 this->addChild(overlay, 10000);
                 overlay->runAction(CCSequence::create(
                     CCFadeTo::create(.18f, 255),
@@ -53,7 +52,6 @@ public:
                     nullptr
                 ));
             } else {
-                // Keep the HUD attached to the viewport even if the layer size changes.
                 overlay->setPosition({12.f, this->getContentHeight() - 124.f});
             }
             ImixAI::update(this, dt);
