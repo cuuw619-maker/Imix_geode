@@ -15,6 +15,8 @@ public:
     void onVisualToggle(cocos2d::CCObject* sender);
     void onGameplayToggle(cocos2d::CCObject* sender);
     void onPlayerScale(cocos2d::CCObject* sender);
+    void onAIToggle(cocos2d::CCObject* sender);
+    void onAIReset(cocos2d::CCObject* sender);
     void onResetFeatures(cocos2d::CCObject* sender);
 
 private:
