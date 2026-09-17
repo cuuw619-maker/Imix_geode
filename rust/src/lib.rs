@@ -1,6 +1,12 @@
 #![no_std]
 
+use core::panic::PanicInfo;
 use core::sync::atomic::{AtomicI32, AtomicU32, Ordering};
+
+#[panic_handler]
+fn panic(_info: &PanicInfo) -> ! {
+    loop {}
+}
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -51,14 +57,11 @@ pub extern "C" fn imix_rust_plan(
         _ => 6.0,
     };
 
-    // A deterministic, local trajectory heuristic. Rust does not replace the
-    // game hook; it supplies a bounded decision to the C++ control layer.
     let vertical_penalty = (hazard_dy.abs() * 0.045).min(18.0);
     let speed_comp = (speed * 0.008).clamp(0.0, 10.0);
     let failure_comp = (failure_count * 1.5).min(10.0);
     let lead = (28.0 + candidate_offset + speed_comp + failure_comp - vertical_penalty)
         .clamp(12.0, 52.0);
-
     let alignment = (hazard_dx - lead).abs();
     let confidence = (1.0 - alignment / 80.0).clamp(0.05, 0.99);
     let should_jump = hazard_dx >= 8.0 && hazard_dx <= 115.0 && alignment <= 24.0;
