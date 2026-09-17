@@ -1,6 +1,7 @@
 #pragma once
 #include <Geode/Geode.hpp>
 #include <Geode/ui/Popup.hpp>
+#include "ImixMenuModel.hpp"
 
 class ImixMenu : public geode::Popup {
 protected:
@@ -22,7 +23,7 @@ public:
 private:
     void selectCategory(int category);
     void renderCategory();
-    void renderItem(const struct ImixMenuModelItemProxy& item, float y);
+    void renderItem(const ImixMenuModel::Item& item, float y);
     void animateContentIn(int direction);
     void animateCategoryButtons();
 
