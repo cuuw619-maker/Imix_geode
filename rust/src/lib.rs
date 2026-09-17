@@ -8,6 +8,12 @@ fn panic(_info: &PanicInfo) -> ! {
     loop {}
 }
 
+// Android/LLVM may still reference the Rust personality symbol when the
+// static library is linked into a native shared object. Imix never unwinds
+// Rust panics, so a no-op personality is sufficient for this panic-abort core.
+#[no_mangle]
+pub extern "C" fn rust_eh_personality() {}
+
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct ImixRustDecision {
