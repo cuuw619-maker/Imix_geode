@@ -21,8 +21,6 @@ endif()
 
 add_subdirectory($ENV{GEODE_SDK} ${CMAKE_CURRENT_BINARY_DIR}/geode)
 
-# Android64: compile the Rust core as a native static library and expose it
-# through src/ImixRuntimeAPI.cpp. Other targets use the deterministic C++ fallback.
 if (ANDROID AND CMAKE_ANDROID_ARCH_ABI STREQUAL "arm64-v8a")
     find_program(IMIX_CARGO cargo)
     if (NOT IMIX_CARGO)
@@ -47,7 +45,8 @@ if (ANDROID AND CMAKE_ANDROID_ARCH_ABI STREQUAL "arm64-v8a")
     add_custom_target(imix_rust_core DEPENDS "${IMIX_RUST_LIB}")
     add_dependencies(${PROJECT_NAME} imix_rust_core)
     target_compile_definitions(${PROJECT_NAME} PRIVATE IMIX_RUST_BACKEND=1)
-    target_link_libraries(${PROJECT_NAME} PRIVATE "${IMIX_RUST_LIB}")
+    # Geode's setup_geode_mod uses the plain target_link_libraries signature.
+    target_link_libraries(${PROJECT_NAME} "${IMIX_RUST_LIB}")
 endif()
 
 setup_geode_mod(${PROJECT_NAME})
