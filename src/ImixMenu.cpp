@@ -1,4 +1,5 @@
 #include "ImixMenu.hpp"
+#include "ImixAI.hpp"
 #include <algorithm>
 #include <cstdio>
 using namespace geode::prelude;
@@ -20,14 +21,14 @@ bool ImixMenu::init(){
     auto r=CCLayerColor::create({BG.r,BG.g,BG.b,255});r->setContentSize(s);m_mainLayer->addChild(r,100);
     auto h=CCLayerColor::create({HEADER.r,HEADER.g,HEADER.b,255});h->setContentSize({s.width,62});h->setPosition({0,s.height-62});r->addChild(h);
     auto t=T("IMIX",21,TEXT);t->setAnchorPoint({0,.5f});t->setPosition({22,40});h->addChild(t);
-    auto sub=T("CUSTOM GAMEPLAY LAB  •  v2",8,MUTED);sub->setAnchorPoint({0,.5f});sub->setPosition({23,18});h->addChild(sub);
+    auto sub=T("CUSTOM GAMEPLAY LAB  •  AI TRAINER",8,MUTED);sub->setAnchorPoint({0,.5f});sub->setPosition({23,18});h->addChild(sub);
     auto dot=CCLayerColor::create({ON.r,ON.g,ON.b,255});dot->setContentSize({7,7});dot->setPosition({s.width-24,42});h->addChild(dot);
     auto side=CCLayerColor::create({SIDE.r,SIDE.g,SIDE.b,255});side->setContentSize({146,s.height-62});r->addChild(side);
     mContent=CCLayer::create();mContent->setContentSize({s.width-146,s.height-62});mContent->setPosition({146,0});r->addChild(mContent);
     mCategoryButtons=CCArray::create();mCategoryButtons->retain();
-    auto menu=CCMenu::create();menu->setPosition({73,s.height-110});side->addChild(menu);
-    const char* cats[]={"STARTPOS","PLAYER","VISUAL","GAMEPLAY","MOTION","TOOLS"};
-    for(int i=0;i<6;i++){auto b=B(cats[i],this,menu_selector(ImixMenu::onCategory),i);b->setPosition({0,92-i*43.f});menu->addChild(b);mCategoryButtons->addObject(b);}
+    auto menu=CCMenu::create();menu->setPosition({73,s.height-105});side->addChild(menu);
+    const char* cats[]={"STARTPOS","PLAYER","VISUAL","GAMEPLAY","MOTION","TOOLS","AI TRAINER"};
+    for(int i=0;i<7;i++){auto b=B(cats[i],this,menu_selector(ImixMenu::onCategory),i);b->setPosition({0,92-i*38.f});menu->addChild(b);mCategoryButtons->addObject(b);}
     auto v=T("IMIX CORE",8,MUTED);v->setPosition({16,14});v->setAnchorPoint({0,0});side->addChild(v);
     selectCategory(0);return true;
 }
@@ -38,8 +39,8 @@ void ImixMenu::animateCategoryButtons(){for(unsigned i=0;mCategoryButtons&&i<mCa
 void ImixMenu::animateContentIn(){if(!mContent)return;mContent->stopAllActions();mContent->setPositionX(156);mContent->runAction(CCEaseSineOut::create(CCMoveTo::create(.20f,{146,0})));}
 
 void ImixMenu::selectCategory(int cat){
-    mSelectedCategory=std::max(0,std::min(cat,5));mContent->removeAllChildrenWithCleanup(true);float h=mContent->getContentHeight();
-    const char* titles[]={"Smart StartPos","Player Lab","Visual Lab","Gameplay","Motion Lab","Utilities"};
+    mSelectedCategory=std::max(0,std::min(cat,6));mContent->removeAllChildrenWithCleanup(true);float h=mContent->getContentHeight();
+    const char* titles[]={"Smart StartPos","Player Lab","Visual Lab","Gameplay","Motion Lab","Utilities","AI Practice Trainer"};
     auto title=T(titles[mSelectedCategory],19,TEXT);title->setAnchorPoint({0,1});title->setPosition({22,h-18});mContent->addChild(title);
     if(mSelectedCategory==0){
         auto c=C(mContent,h-132,68);auto l=T("SMART STARTPOS",12,TEXT);l->setPosition({14,49});c->addChild(l);auto d=T("Capture / restore your live run position",8,MUTED);d->setPosition({14,30});c->addChild(d);auto m=CCMenu::create();m->setPosition({c->getContentWidth()-37,34});m->addChild(B(F("smart-startpos-enabled",true)?"ON":"OFF",this,menu_selector(ImixMenu::onSmartToggle)));c->addChild(m);
@@ -67,8 +68,13 @@ void ImixMenu::selectCategory(int cat){
         toggle(mContent,h-228,"Pulse Scale","Smooth sinusoidal scale","pulse-scale",this,menu_selector(ImixMenu::onVisualToggle),6);
         toggle(mContent,h-276,"Auto Mirror","Movement-direction flip","auto-mirror",this,menu_selector(ImixMenu::onVisualToggle),9);
         toggle(mContent,h-324,"X-Ray Fade","Smooth alpha modulation","xray-fade",this,menu_selector(ImixMenu::onVisualToggle),8);
-    }else{
+    }else if(mSelectedCategory==5){
         auto c=C(mContent,h-132,78);auto l=T("PANIC RESET",12,TEXT);l->setPosition({14,57});c->addChild(l);auto d=T("Disable every Imix runtime feature",8,MUTED);d->setPosition({14,36});c->addChild(d);auto m=CCMenu::create();m->setPosition({c->getContentWidth()-43,38});m->addChild(B("RESET",this,menu_selector(ImixMenu::onResetFeatures)));c->addChild(m);auto n=T("Settings are stored locally by the mod",7,MUTED);n->setPosition({22,18});mContent->addChild(n);
+    }else{
+        toggle(mContent,h-132,"AI Auto Pilot","Adaptive jump planner","ai-enabled",this,menu_selector(ImixMenu::onAIToggle),1);
+        auto c=C(mContent,h-188,84);auto l=T("LEARNING ENGINE",11,TEXT);l->setPosition({14,62});c->addChild(l);auto d=T("Learns from collision X positions",8,MUTED);d->setPosition({14,42});c->addChild(d);auto e=T("Changes timing instead of repeating a random action",7,MUTED);e->setPosition({14,26});c->addChild(e);auto m=CCMenu::create();m->setPosition({c->getContentWidth()-43,43});m->addChild(B("CLEAR",this,menu_selector(ImixMenu::onAIReset)));c->addChild(m);
+        auto a=C(mContent,h-282,78);auto t1=T("PRACTICE CHECKPOINTS",11,TEXT);t1->setPosition({14,56});a->addChild(t1);auto t2=T("Automatic safe-progress snapshots",8,MUTED);t2->setPosition({14,37});a->addChild(t2);auto t3=T("Overlay shows the current hypothesis in real time",7,MUTED);t3->setPosition({14,21});a->addChild(t3);
+        auto note=T("AI is designed for Practice/testing. It uses no network or API key.",7,MUTED);note->setAnchorPoint({0,0});note->setPosition({22,18});mContent->addChild(note);
     }
     animateCategoryButtons();animateContentIn();
 }
@@ -78,4 +84,6 @@ void ImixMenu::onSmartAction(CCObject* s){int t=static_cast<CCNode*>(s)->getTag(
 void ImixMenu::onVisualToggle(CCObject* s){int t=static_cast<CCNode*>(s)->getTag();const char* k=t==1?"ghost-player":t==2?"hide-player":t==3?"rainbow-player":t==4?"mirror-player":t==5?"spin-player":t==6?"pulse-scale":t==7?"color-reactor":t==8?"xray-fade":"auto-mirror";Mod::get()->setSavedValue(k,!F(k));selectCategory(mSelectedCategory);}
 void ImixMenu::onGameplayToggle(CCObject* s){int t=static_cast<CCNode*>(s)->getTag();const char* k=t==20?"no-death":t==21?"smart-startpos-enabled":"practice-shield";Mod::get()->setSavedValue(k,!F(k));selectCategory(mSelectedCategory);}
 void ImixMenu::onPlayerScale(CCObject*){int sc=Mod::get()->getSavedValue<int>("player-scale",100)+10;if(sc>140)sc=60;Mod::get()->setSavedValue("player-scale",sc);selectCategory(1);}
-void ImixMenu::onResetFeatures(CCObject*){const char* ks[]={"ghost-player","hide-player","rainbow-player","mirror-player","spin-player","pulse-scale","color-reactor","xray-fade","auto-mirror","no-death","practice-shield","startpos-valid","startpos-request-capture","startpos-request-teleport","smart-startpos-enabled"};for(auto k:ks)Mod::get()->setSavedValue(k,false);Mod::get()->setSavedValue("player-scale",100);selectCategory(0);}
+void ImixMenu::onAIToggle(CCObject*){Mod::get()->setSavedValue("ai-enabled",!F("ai-enabled"));if(F("ai-enabled"))Mod::get()->setSavedValue("practice-shield",true);else ImixAI::reset();selectCategory(6);}
+void ImixMenu::onAIReset(CCObject*){ImixAI::reset();selectCategory(6);}
+void ImixMenu::onResetFeatures(CCObject*){ImixAI::reset();const char* ks[]={"ghost-player","hide-player","rainbow-player","mirror-player","spin-player","pulse-scale","color-reactor","xray-fade","auto-mirror","no-death","practice-shield","startpos-valid","startpos-request-capture","startpos-request-teleport","smart-startpos-enabled","ai-enabled"};for(auto k:ks)Mod::get()->setSavedValue(k,false);Mod::get()->setSavedValue("player-scale",100);selectCategory(0);}
