@@ -47,6 +47,7 @@ object ImixRuntime {
         return Decision(v[0] != 0f, v[1], v[2], v[3].toInt(), v[4], v[5], v[6].toInt())
     }
 
+    @JvmStatic
     private external fun nativePlan(
         playerX: Float,
         playerY: Float,
