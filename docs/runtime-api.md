@@ -1,24 +1,45 @@
 # Imix Runtime API
 
-Imix now has a small, stable native runtime boundary in `src/ImixRuntimeAPI.hpp`.
+Imix uses one small native runtime contract instead of exposing backend-specific code to gameplay modules.
 
-## Backends
+## Public layers
 
-- C++ remains the Geometry Dash/Geode integration layer and owns all game hooks and real input.
-- Rust is compiled into the Android64 build as `libimix_rust_core.a` and is called through a C ABI.
-- Windows and non-Android targets use the deterministic C++ fallback.
+- `include/imix/runtime.h` — stable C ABI. This is the language boundary.
+- `src/ImixRuntimeAPI.hpp/.cpp` — compact C++ facade used by Imix gameplay code.
+- `rust/src/lib.rs` — Rust implementation for Android64.
+- `cmake/ImixRust.cmake` — reusable CMake integration; the root CMake only needs `include(...)` + `imix_enable_rust_backend(...)`.
 
-## Rust entry points
+The C ABI intentionally contains only plain C structs, integers, floats and functions. That makes it suitable for C++, Rust, a future Kotlin/JNI bridge, or another native module without exposing Geode/Cocos2d types.
+
+## Contract
 
 ```text
-imix_rust_version()
-imix_rust_reset()
-imix_rust_record_failure(x, candidate)
-imix_rust_plan(player_x, player_y, velocity_y, hazard_dx, hazard_dy, speed, candidate)
+imix_runtime_version()
+imix_runtime_capabilities()
+imix_runtime_reset()
+imix_runtime_record_failure(x, candidate)
+imix_runtime_record_success(x, candidate)
+imix_runtime_plan(frame)
+imix_runtime_backend()
 ```
 
-The Rust backend is deliberately deterministic and local. It does not use HTTP, API keys, cloud inference, or a JVM. The returned decision is advisory; C++ remains responsible for invoking `PlayLayer::handleButton`, so the backend cannot silently replace real gameplay with no-clip or invulnerability.
+`ImixRuntimeFrame` carries player state, nearest hazard geometry, movement speed and the trajectory candidate. `ImixRuntimeDecision` returns the proposed jump, timing lead, confidence and movement phase.
 
-## Adding another native language
+Capability bits:
 
-A future backend can implement the same C ABI and be selected by the C++ bridge. Kotlin is not used as the core Geode runtime because the mod itself is a native shared library; Kotlin would require a separate Android/JVM layer and JNI boundary. That can be added later without changing the public C++ decision contract.
+```text
+1 = Planning
+2 = FailureMemory
+4 = Reset
+8 = Feedback
+```
+
+## Responsibilities
+
+C++ remains responsible for Geometry Dash hooks, scene access, Practice Mode and real player input. The runtime backend only analyzes state and returns a decision. It cannot implement no-clip, invulnerability or teleportation through this interface.
+
+Rust is built as a static library and linked into Android64. Windows/non-Android builds retain the deterministic C++ implementation. No HTTP, API key, cloud inference or JVM is required.
+
+## Adding a backend
+
+Implement the same C ABI and connect it in the runtime bridge. Kotlin can be added later as an Android/JNI adapter while preserving the exact same public contract; it should not become the core Geode native runtime.
