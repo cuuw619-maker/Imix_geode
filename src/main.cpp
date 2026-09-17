@@ -41,7 +41,6 @@ public:
         auto size = mOwner->getContentSize() * mOwner->getScale();
         const float margin = std::max(8.f, std::min(win.width, win.height) * .018f);
         auto pos = mOwner->getPosition();
-        // ImixMenu is top-right anchored: position is the panel's top-right point.
         pos.x = std::clamp(pos.x + delta.x, size.width + margin, win.width - margin);
         pos.y = std::clamp(pos.y + delta.y, size.height + margin, win.height - margin);
         mOwner->setPosition(pos);
@@ -114,10 +113,9 @@ void addRuntimeBadge(ImixMenu* popup) {
     label->setAnchorPoint({0.f, .5f});
     label->setPosition({8.f, 11.f});
     badge->addChild(label);
-    auto win = CCDirector::sharedDirector()->getWinSize();
     const auto base = popup->getContentSize();
-    const float scale = popup->getScale();
-    badge->setPosition({12.f / scale, (base.height - 12.f) / scale});
+    // Badge coordinates are in the popup's unscaled local space.
+    badge->setPosition({12.f, base.height - 12.f});
     popup->addChild(badge, 2000);
 }
 
@@ -131,9 +129,6 @@ void openImix(CCNode* button) {
     auto win = CCDirector::sharedDirector()->getWinSize();
     const float margin = std::max(12.f, std::min(win.width, win.height) * .025f);
     const auto base = popup->getContentSize();
-
-    // Top-right GD-style placement. The anchor is explicit so the panel can
-    // never drift past the right/top edge when its scale changes.
     popup->setAnchorPoint({1.f, 1.f});
 
     const float availableW = std::max(260.f, win.width - margin * 2.f);
@@ -148,7 +143,6 @@ void openImix(CCNode* button) {
         drag->setPosition({0.f, base.height - 64.f});
         popup->addChild(drag, 1000);
     }
-
     addRuntimeBadge(popup);
 
     popup->stopAllActions();
