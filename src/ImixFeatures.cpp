@@ -35,13 +35,31 @@ public:
         if (!player) return;
 
         if (ImixAI::enabled()) {
-            if (!this->getChildByID("imix-ai-overlay")) {
-                auto overlay = ImixAI::createOverlay();
+            auto overlay = this->getChildByID("imix-ai-overlay");
+            if (!overlay) {
+                overlay = ImixAI::createOverlay();
                 overlay->setID("imix-ai-overlay");
-                overlay->setPosition({10.f, this->getContentHeight() - 10.f});
+                // Use an explicit bottom-left anchor and place the dashboard inside
+                // the PlayLayer bounds. This prevents the visual panel from drifting
+                // relative to the actual layer coordinate system.
+                overlay->setAnchorPoint({0.f, 0.f});
+                overlay->setPosition({12.f, this->getContentHeight() - 124.f});
+                overlay->setScale(.82f);
+                overlay->setOpacity(0);
                 this->addChild(overlay, 10000);
+                overlay->runAction(CCSequence::create(
+                    CCFadeTo::create(.18f, 255),
+                    CCEaseSineOut::create(CCScaleTo::create(.16f, .88f)),
+                    nullptr
+                ));
+            } else {
+                // Keep the HUD attached to the viewport even if the layer size changes.
+                overlay->setPosition({12.f, this->getContentHeight() - 124.f});
             }
             ImixAI::update(this, dt);
+        } else if (auto overlay = this->getChildByID("imix-ai-overlay")) {
+            overlay->stopAllActions();
+            overlay->runAction(CCFadeOut::create(.12f));
         }
 
         if (F("smart-startpos-enabled", true)) {
@@ -89,7 +107,6 @@ public:
             player->setColor({255,255,255});
         }
 
-        // Precision scale: 0.01x steps instead of integer-only percentages.
         const float baseScale = std::clamp(Mod::get()->getSavedValue<float>("player-scale-factor", 1.f), .50f, 1.50f);
         float scale = baseScale;
         if (F("pulse-scale")) scale *= 1.f + 0.10f * std::sin(x * 0.045f + hue * 6.28318f);
