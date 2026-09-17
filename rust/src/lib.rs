@@ -8,14 +8,24 @@ fn panic(_info: &PanicInfo) -> ! {
     loop {}
 }
 
-// Android/LLVM may reference this symbol when the static library is linked
-// into a native shared object. Imix never unwinds Rust panics.
 #[no_mangle]
 pub extern "C" fn rust_eh_personality() {}
 
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct ImixRustDecision {
+pub struct ImixRuntimeFrame {
+    pub player_x: f32,
+    pub player_y: f32,
+    pub velocity_y: f32,
+    pub hazard_dx: f32,
+    pub hazard_dy: f32,
+    pub speed: f32,
+    pub candidate: i32,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct ImixRuntimeDecision {
     pub should_jump: i32,
     pub lead_px: f32,
     pub confidence: f32,
@@ -30,10 +40,7 @@ static LAST_CANDIDATE: AtomicI32 = AtomicI32::new(2);
 pub extern "C" fn imix_rust_version() -> u32 { 2 }
 
 #[no_mangle]
-pub extern "C" fn imix_rust_capabilities() -> u32 {
-    // Planning | FailureMemory | Reset | Feedback
-    1 | 2 | 4 | 8
-}
+pub extern "C" fn imix_rust_capabilities() -> u32 { 15 }
 
 #[no_mangle]
 pub extern "C" fn imix_rust_reset() {
@@ -51,7 +58,6 @@ pub extern "C" fn imix_rust_record_failure(x: f32, candidate: i32) {
 
 #[no_mangle]
 pub extern "C" fn imix_rust_record_success(_x: f32, _candidate: i32) {
-    // A successful trajectory removes some accumulated failure bias.
     let mut current = FAILURES.load(Ordering::Relaxed);
     while current > 0 {
         match FAILURES.compare_exchange_weak(
@@ -64,17 +70,9 @@ pub extern "C" fn imix_rust_record_success(_x: f32, _candidate: i32) {
 }
 
 #[no_mangle]
-pub extern "C" fn imix_rust_plan(
-    player_x: f32,
-    player_y: f32,
-    velocity_y: f32,
-    hazard_dx: f32,
-    hazard_dy: f32,
-    speed: f32,
-    candidate: i32,
-) -> ImixRustDecision {
+pub extern "C" fn imix_rust_plan(f: ImixRuntimeFrame) -> ImixRuntimeDecision {
     let failure_count = FAILURES.load(Ordering::Relaxed) as f32;
-    let candidate_offset = match candidate {
+    let candidate_offset = match f.candidate {
         0 => -6.0,
         1 => -3.0,
         2 => 0.0,
@@ -82,18 +80,18 @@ pub extern "C" fn imix_rust_plan(
         _ => 6.0,
     };
 
-    let vertical_penalty = (hazard_dy.abs() * 0.045).min(18.0);
-    let speed_comp = (speed * 0.008).clamp(0.0, 10.0);
+    let vertical_penalty = (f.hazard_dy.abs() * 0.045).min(18.0);
+    let speed_comp = (f.speed * 0.008).clamp(0.0, 10.0);
     let failure_comp = (failure_count * 1.5).min(10.0);
     let lead = (28.0 + candidate_offset + speed_comp + failure_comp - vertical_penalty)
         .clamp(12.0, 52.0);
-    let alignment = (hazard_dx - lead).abs();
+    let alignment = (f.hazard_dx - lead).abs();
     let confidence = (1.0 - alignment / 80.0).clamp(0.05, 0.99);
-    let should_jump = hazard_dx >= 8.0 && hazard_dx <= 115.0 && alignment <= 24.0;
-    let phase = if velocity_y > 1.0 { 1 } else if velocity_y < -1.0 { 2 } else { 0 };
+    let should_jump = f.hazard_dx >= 8.0 && f.hazard_dx <= 115.0 && alignment <= 24.0;
+    let phase = if f.velocity_y > 1.0 { 1 } else if f.velocity_y < -1.0 { 2 } else { 0 };
 
-    let _ = (player_x, player_y);
-    ImixRustDecision {
+    let _ = (f.player_x, f.player_y);
+    ImixRuntimeDecision {
         should_jump: if should_jump { 1 } else { 0 },
         lead_px: lead,
         confidence,
